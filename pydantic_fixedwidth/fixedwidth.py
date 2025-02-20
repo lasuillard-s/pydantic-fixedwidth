@@ -145,9 +145,9 @@ class Options(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     field_info: FieldInfo
+
     length: int
     order: int
-
     justify: Literal["left", "right"]
     fill_char: bytes = Field(..., min_length=1, max_length=1)
     encoding: str
