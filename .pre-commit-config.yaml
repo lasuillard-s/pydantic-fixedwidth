@@ -1,0 +1,52 @@
+default_stages: [pre-commit]
+fail_fast: true
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+
+  - repo: https://github.com/lasuillard/pre-commit-hooks
+    rev: v0.3.0
+    hooks:
+      - id: check-directory-structure
+        args:
+          - --source
+          - pydantic_fixedwidth
+          - --extend-exclude
+          - '**/errors.py'
+
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: Fix using Ruff
+        language: system
+        types: [python]
+        entry: uv run ruff check
+        args: [--fix]
+
+      - id: ruff-format
+        name: Format using Ruff
+        language: system
+        types: [python]
+        entry: uv run ruff format
+
+      - id: mypy
+        name: Type check with Mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+        entry: uv run mypy
+        args: [--show-error-codes, --pretty, .]
+
+      - id: pytest
+        name: Test with pytest
+        language: system
+        types: [python]
+        pass_filenames: false
+        entry: uv run pytest
+
+ci:
+  autofix_prs: true
+  autoupdate_schedule: quarterly
