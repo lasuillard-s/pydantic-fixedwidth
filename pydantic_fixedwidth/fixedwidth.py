@@ -16,21 +16,49 @@ logger = logging.getLogger(__name__)
 __counter = 0
 
 
-def OrderedField(*args: Any, **kwargs: Any) -> Any:  # noqa: N802
-    """An wrapper for`pydantic.Field` with fixed-width related settings."""
+def OrderedField(  # noqa: N802, PLR0913
+    *args: Any,
+    length: int,
+    justify: Literal["left", "right"] = "left",
+    fill_char: bytes = b" ",
+    encoding: str = "utf-8",
+    from_str: Callable[[str], Any] = lambda x: x.strip(),
+    to_str: Callable[[Any], str] = str,
+    **kwargs: Any,
+) -> Any:
+    """A wrapper for `pydantic.Field` with fixed-width related settings.
+
+    Args:
+        args: Positional arguments to be passed to `pydantic.Field`.
+        length: The fixed width length of the field.
+        justify: Justification of the field content.
+        fill_char: Byte used to fill the field.
+        encoding: Encoding used for the field.
+        from_str: Function to convert from string to the field type.
+            If field type is not `str`, user must provide it.
+        to_str: Function to convert from the field type to string.
+        kwargs: Additional keyword arguments to be passed to `pydantic.Field`.
+
+    Returns:
+        A `pydantic.Field` instance with fixed-width related settings.
+    """
     global __counter  # noqa: PLW0603
 
+    kwargs.setdefault("json_schema_extra", {})
     field: FieldInfo = Field(*args, **kwargs)
-    if not field.exclude:
-        config = {
-            "field_info": field,
-            "order": __counter,
-            **{key: value for key, value in kwargs.items() if key in Options.model_fields},
-        }
-        options: Options = Options.model_validate(config)
-        options.save_to(field)
 
-        __counter += 1
+    options = Options(
+        field_info=field,
+        length=length,
+        order=__counter,
+        justify=justify,
+        fill_char=fill_char,
+        encoding=encoding,
+        from_str=from_str,
+        to_str=to_str,
+    )
+    options.save()
+    __counter += 1
 
     return field
 
@@ -69,15 +97,15 @@ class Fixedwidth(BaseModel):
 
             value = getattr(self, field_name)
             s = options.to_str(value)
-            b = options.to_bytes(s, options.encoding)
+            b = str.encode(s, options.encoding)
             if len(b) > options.length:
                 msg = f"Value of {field_name!r} ({b!r}; length: {len(b)}) is longer than field length {options.length}"
                 raise ValueError(msg)
 
             b = (
-                b.ljust(options.length, options.fill_byte)
+                b.ljust(options.length, options.fill_char)
                 if options.justify == "left"
-                else b.rjust(options.length, options.fill_byte)
+                else b.rjust(options.length, options.fill_char)
             )
             values.append(b)
 
@@ -96,7 +124,7 @@ class Fixedwidth(BaseModel):
                 continue
 
             b = raw[index : index + options.length]
-            s = options.from_bytes(b, options.encoding)
+            s = bytes.decode(b, options.encoding)
             value = options.from_str(s)
             values[field_name] = value
             index += options.length
@@ -105,6 +133,10 @@ class Fixedwidth(BaseModel):
         logger.debug("Parsed %r into %r", raw, obj)
 
         return obj
+
+
+_OPTIONS_KEY = "__pydantic_fixedwidth__"
+"""Key to store `Options` in `field_info.json_schema_extra`."""
 
 
 class Options(BaseModel):
@@ -116,29 +148,23 @@ class Options(BaseModel):
     length: int
     order: int
 
-    justify: Literal["left", "right"] = "left"
-    fill_byte: bytes = Field(b" ", min_length=1, max_length=1)
-    encoding: str = "utf-8"
+    justify: Literal["left", "right"]
+    fill_char: bytes = Field(..., min_length=1, max_length=1)
+    encoding: str
 
-    from_str: Callable[[str], Any] = lambda x: x.strip()
-    """Callable to create object from a string to the field type.
+    from_str: Callable[[str], Any]
+    """Callable to create object from a string to the field type."""
 
-    if field type is not `str`, this must be provided by user.
-    """
-
-    to_str: Callable[[Any], str] = str
+    to_str: Callable[[Any], str]
     """Callable to cast the field type to a string."""
 
-    from_bytes: Callable[[bytes, str], str] = bytes.decode
-    to_bytes: Callable[[str, str], bytes] = str.encode
-
-    def save_to(self, field_info: FieldInfo) -> None:
+    def save(self) -> None:
         """Save `Options` to `field_info`."""
-        if not isinstance(field_info.json_schema_extra, dict):
+        if not isinstance(self.field_info.json_schema_extra, dict):
             msg = "`field_info.json_schema_extra` must be a `dict`"
             raise TypeError(msg)
 
-        field_info.json_schema_extra.update(self.model_dump())
+        self.field_info.json_schema_extra[_OPTIONS_KEY] = self.model_dump()
 
     @classmethod
     def load_from(cls, field_info: FieldInfo) -> Options:
@@ -147,4 +173,4 @@ class Options(BaseModel):
             msg = f"`field_info.json_schema_extra` must be a `dict`: {field_info}"
             raise TypeError(msg)
 
-        return cls.model_validate(field_info.json_schema_extra)
+        return cls.model_validate(field_info.json_schema_extra.get(_OPTIONS_KEY, {}))
