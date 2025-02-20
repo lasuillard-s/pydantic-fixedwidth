@@ -79,7 +79,7 @@ class Fixedwidth(BaseModel):
         field_options = (
             (
                 key,
-                Options.load_from(value),
+                Options.load(value),
             )
             for key, value in cls.model_fields.items()
             if not value.exclude
@@ -167,7 +167,7 @@ class Options(BaseModel):
         self.field_info.json_schema_extra[_OPTIONS_KEY] = self.model_dump()
 
     @classmethod
-    def load_from(cls, field_info: FieldInfo) -> Options:
+    def load(cls, field_info: FieldInfo) -> Options:
         """Load `Options` from `field_info`."""
         if not isinstance(field_info.json_schema_extra, dict):
             msg = f"`field_info.json_schema_extra` must be a `dict`: {field_info}"
