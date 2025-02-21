@@ -1,6 +1,6 @@
 [project]
 name = "pydantic-fixedwidth"
-version = "0.1.0"
+version = "0.1.1"
 description = "Custom Pydantic models for parsing and serializing fixed-width format of data."
 readme = "README.md"
 license = "MIT"
