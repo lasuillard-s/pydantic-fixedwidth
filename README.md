@@ -5,4 +5,4 @@
 [![codecov](https://codecov.io/gh/lasuillard/pydantic-fixedwidth/graph/badge.svg?token=R5pQWB43DP)](https://codecov.io/gh/lasuillard/pydantic-fixedwidth)
 ![GitHub Release](https://img.shields.io/github/v/release/lasuillard/pydantic-fixedwidth)
 
-Custom Pydantic models for parsing and serializing fixed-width format of data.
+Custom Pydantic models for serializing and deserializing fixed-width format data.
