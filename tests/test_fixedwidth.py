@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 
+import pydantic
 import pytest
 
-from pydantic_fixedwidth import Fixedwidth, Padding
+from pydantic_fixedwidth import Fixedwidth, Options, Padding
 from pydantic_fixedwidth import OrderedField as Field
 
 tzinfo = timezone.utc
@@ -65,3 +66,14 @@ class TestFixedwidth:
             number=381,
             ts=datetime(2024, 1, 23, 14, 11, 20, 124277, tzinfo=tzinfo),
         )
+
+
+class TestOptions:
+    def test_save_json_schema_extra_is_not_dict(self) -> None:
+        with pytest.raises(TypeError, match="`json_schema_extra` must be a `dict`, but got: <class 'str'>"):
+            Field(length=10, json_schema_extra="not-a-dict")
+
+    def test_load_json_schema_extra_is_not_dict(self) -> None:
+        field = pydantic.Field()
+        with pytest.raises(TypeError, match="`json_schema_extra` must be a `dict`, but got: <class 'NoneType'>"):
+            Options.load(field)
