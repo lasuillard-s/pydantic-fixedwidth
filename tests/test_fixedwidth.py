@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+import pytest
+
 from pydantic_fixedwidth import Fixedwidth, Padding
 from pydantic_fixedwidth import OrderedField as Field
 
@@ -36,6 +38,22 @@ class TestFixedwidth:
 
         assert len(b) == 54
         assert b == b"<DFG&   \xed\x95\x9c\xea\xb8\x800000000381          20240123141120124277"
+
+    def test_format_bytes_too_long(self) -> None:
+        some_request = SomeRequest(
+            string="<DFG&",
+            hangul="한글",
+            number=381,
+            ts=datetime(2024, 1, 23, 14, 11, 20, 124277, tzinfo=tzinfo),
+        )
+
+        # This should raise an exception
+        some_request.string = "very-long-string"
+        with pytest.raises(
+            ValueError,
+            match=r"Value of 'string' \(b'very-long-string'; length: 16\) is longer than field length 8",
+        ):
+            some_request.format_bytes()
 
     def test_parse_bytes(self) -> None:
         b = b"<DFG&   \xed\x95\x9c\xea\xb8\x800000000381          20240123141120124277"

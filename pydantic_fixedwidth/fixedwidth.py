@@ -92,9 +92,6 @@ class Fixedwidth(BaseModel):
         """Format the model as a fixed-width byte string."""
         values: list[bytes] = []
         for field_name, options in self._field_options.items():
-            if options.field_info.exclude:
-                continue
-
             value = getattr(self, field_name)
             s = options.to_str(value)
             b = str.encode(s, options.encoding)
@@ -120,9 +117,6 @@ class Fixedwidth(BaseModel):
         values: dict[str, Any] = {}
         index = 0
         for field_name, options in cls._field_options.items():
-            if options.field_info.exclude:
-                continue
-
             b = raw[index : index + options.length]
             s = bytes.decode(b, options.encoding)
             value = options.from_str(s)
@@ -161,7 +155,9 @@ class Options(BaseModel):
     def save(self) -> None:
         """Save `Options` to `field_info`."""
         if not isinstance(self.field_info.json_schema_extra, dict):
-            msg = "`field_info.json_schema_extra` must be a `dict`"
+            msg = (
+                f"`field_info.json_schema_extra` must be a `dict`, but got: {type(self.field_info.json_schema_extra)!r}"
+            )
             raise TypeError(msg)
 
         self.field_info.json_schema_extra[_OPTIONS_KEY] = self.model_dump()
@@ -170,7 +166,7 @@ class Options(BaseModel):
     def load(cls, field_info: FieldInfo) -> Options:
         """Load `Options` from `field_info`."""
         if not isinstance(field_info.json_schema_extra, dict):
-            msg = f"`field_info.json_schema_extra` must be a `dict`: {field_info}"
+            msg = f"`field_info.json_schema_extra` must be a `dict`, but got: {type(field_info.json_schema_extra)!r}"
             raise TypeError(msg)
 
         return cls.model_validate(field_info.json_schema_extra.get(_OPTIONS_KEY, {}))
