@@ -45,6 +45,7 @@ class SomeRequest(Fixedwidth):
     )
 
 
+# Format model to bytes
 some_request = SomeRequest(
     string="<DFG&",
     hangul="한글",
@@ -55,4 +56,9 @@ b = some_request.format_bytes()
 
 assert len(b) == 54
 assert b == b"<DFG&   \xed\x95\x9c\xea\xb8\x800000000381          20240123141120124277"
+
+# Parse bytes into model
+parsed_request = SomeRequest.parse_bytes(b)
+
+assert parsed_request == some_request
 ```
