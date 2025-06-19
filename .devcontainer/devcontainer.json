@@ -2,7 +2,7 @@
   "name": "lasuillard/pydantic-fixedwidth",
   "image": "mcr.microsoft.com/devcontainers/base:1-bookworm",
   "features": {
-    "ghcr.io/devcontainers-contrib/features/pre-commit:2": {}
+    "ghcr.io/devcontainers-extra/features/pre-commit:2": {}
   },
   "onCreateCommand": "./.devcontainer/onCreateCommand.sh",
   "postAttachCommand": "make install",
