@@ -1,5 +1,5 @@
 {
-  "name": "lasuillard/pydantic-fixedwidth",
+  "name": "lasuillard-s/pydantic-fixedwidth",
   "image": "mcr.microsoft.com/devcontainers/base:1-bookworm",
   "features": {
     "ghcr.io/devcontainers-extra/features/pre-commit:2": {}
