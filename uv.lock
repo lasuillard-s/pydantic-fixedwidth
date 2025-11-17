@@ -377,14 +377,12 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "mypy" },
-    { name = "ruff" },
-]
-test = [
     { name = "coverage" },
+    { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-sugar" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
@@ -392,14 +390,12 @@ requires-dist = [{ name = "pydantic", specifier = ">=2,<3" }]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "mypy", specifier = "~=1.11" },
-    { name = "ruff", specifier = "~=0.6" },
-]
-test = [
     { name = "coverage", specifier = "~=7.3" },
+    { name = "mypy", specifier = "~=1.11" },
     { name = "pytest", specifier = "~=8.0" },
     { name = "pytest-cov", specifier = ">=5,<7" },
     { name = "pytest-sugar", specifier = "~=1.0" },
+    { name = "ruff", specifier = "~=0.6" },
 ]
 
 [[package]]
