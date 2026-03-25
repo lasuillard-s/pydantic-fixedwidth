@@ -26,10 +26,10 @@ jobs:
         run: uv sync
 
       - name: Lint with Ruff
-        run: uv run ruff check --fix
+        run: uv run ruff check .
 
       - name: Format with Ruff
-        run: uv run ruff format
+        run: uv run ruff format --check .
 
       - name: Type check with Mypy
         run: uv run mypy --show-error-codes --pretty .
