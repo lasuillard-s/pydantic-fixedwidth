@@ -2,6 +2,8 @@ junit.xml
 **/*.ipynb
 tmp/
 .tmp/
+.devcontainer/
+.vscode/
 
 # Created by https://www.toptal.com/developers/gitignore/api/git,linux,macos,python,windows,visualstudiocode
 # Edit at https://www.toptal.com/developers/gitignore?templates=git,linux,macos,python,windows,visualstudiocode
