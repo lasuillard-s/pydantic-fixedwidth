@@ -5,7 +5,6 @@
     "EditorConfig.EditorConfig",
     "charliermarsh.ruff",
     "ms-python.mypy-type-checker",
-    "njpwerner.autodocstring",
     "ms-toolsai.jupyter",
     "ms-python.debugpy"
   ]
