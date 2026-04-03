@@ -1,9 +1,7 @@
 {
   "name": "lasuillard-s/pydantic-fixedwidth",
-  "image": "mcr.microsoft.com/devcontainers/base:trixie",
-  "features": {
-    "ghcr.io/devcontainers-extra/features/pre-commit:2": {}
-  },
+  "image": "mcr.microsoft.com/devcontainers/python:trixie",
+  "features": {},
   "onCreateCommand": "./.devcontainer/onCreateCommand.sh",
   "postStartCommand": "./.devcontainer/postStartCommand.sh",
   "updateContentCommand": "./.devcontainer/updateContentCommand.sh",
