@@ -30,7 +30,6 @@ build-backend = "hatchling.build"
 packages = ["pydantic_fixedwidth"]
 
 [tool.ruff]
-target-version = "py39"
 lint.select = ["ALL"]
 lint.ignore = ["ANN401", "TD003", "FIX002", "D105"]
 line-length = 120
@@ -43,7 +42,6 @@ line-length = 120
 convention = "google"
 
 [tool.mypy]
-python_version = "3.9"
 exclude = ['^\.venv/*']
 namespace_packages = true
 check_untyped_defs = true
