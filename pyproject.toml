@@ -4,7 +4,7 @@ version = "0.2.3"
 description = "Custom Pydantic models for parsing and serializing fixed-width format of data."
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.9, <4.0"
+requires-python = ">=3.10, <4.0"
 dependencies = ["pydantic>=2,<3"]
 
 [dependency-groups]

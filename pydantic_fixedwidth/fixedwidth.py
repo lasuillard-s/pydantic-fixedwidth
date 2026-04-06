@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import logging
 from collections import OrderedDict
+from collections.abc import Callable  # noqa: TC003
 from functools import partial
-from typing import Any, Callable, ClassVar, Literal
+from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.fields import FieldInfo  # noqa: TC002
