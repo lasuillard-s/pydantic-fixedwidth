@@ -9,7 +9,7 @@ dependencies = ["pydantic>=2,<3"]
 
 [dependency-groups]
 dev = [
-	"mypy~=1.11",
+	"mypy~=2.1",
 	"ruff~=0.6",
 	"coverage~=7.3",
 	"pytest-cov>=7,<8",
