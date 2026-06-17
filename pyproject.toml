@@ -1,7 +1,7 @@
 [project]
 name = "pydantic-fixedwidth"
 description = "Custom Pydantic models for serializing and deserializing fixed-width data."
-version = "0.3.0"
+version = "0.3.1"
 authors = [{ name = "Yuchan Lee", email = "lasuillard@gmail.com" }]
 readme = "README.md"
 license = "MIT"
