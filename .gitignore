@@ -1,13 +1,16 @@
-junit.xml
-**/*.ipynb
-tmp/
-.tmp/
 .devcontainer
 .vscode
+junit.xml
+
+# Created by https://www.toptal.com/developers/gitignore/api/git,linux,macos,direnv,dotenv,python,windows,visualstudiocode
+# Edit at https://www.toptal.com/developers/gitignore?templates=git,linux,macos,direnv,dotenv,python,windows,visualstudiocode
+
+### direnv ###
+.direnv
 .envrc
 
-# Created by https://www.toptal.com/developers/gitignore/api/git,linux,macos,python,windows,visualstudiocode
-# Edit at https://www.toptal.com/developers/gitignore?templates=git,linux,macos,python,windows,visualstudiocode
+### dotenv ###
+.env
 
 ### Git ###
 # Created by git for backups. To disable backups in Git:
@@ -195,7 +198,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/
@@ -289,4 +291,4 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# End of https://www.toptal.com/developers/gitignore/api/git,linux,macos,python,windows,visualstudiocode
+# End of https://www.toptal.com/developers/gitignore/api/git,linux,macos,direnv,dotenv,python,windows,visualstudiocode

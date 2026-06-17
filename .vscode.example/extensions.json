@@ -5,7 +5,6 @@
     "EditorConfig.EditorConfig",
     "charliermarsh.ruff",
     "ms-python.mypy-type-checker",
-    "ms-toolsai.jupyter",
     "ms-python.debugpy"
   ]
 }
