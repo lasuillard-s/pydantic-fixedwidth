@@ -4,8 +4,11 @@
 [![codecov](https://codecov.io/gh/lasuillard-s/pydantic-fixedwidth/graph/badge.svg?token=R5pQWB43DP)](https://codecov.io/gh/lasuillard-s/pydantic-fixedwidth)
 [![PyPI - Version](https://img.shields.io/pypi/v/pydantic-fixedwidth)](https://pypi.org/project/pydantic-fixedwidth/)
 
-Custom Pydantic models for serializing and deserializing fixed-width format data.
+Custom Pydantic models for serializing and deserializing fixed-width data.
 
+## ✨ Features
+
+This small Python package provides tools for working with fixed-width data and for serializing and deserializing it using Pydantic models.
 
 ## 🚀 Quick Start
 
@@ -61,3 +64,11 @@ parsed_request = SomeRequest.parse_bytes(b)
 
 assert parsed_request == some_request
 ```
+
+## 💖 Contributing
+
+Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for information on contributing to this project.
+
+## 📜 License
+
+This project is licensed under the MIT License.
