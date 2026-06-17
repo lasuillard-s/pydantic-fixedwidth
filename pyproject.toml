@@ -1,7 +1,8 @@
 [project]
 name = "pydantic-fixedwidth"
+description = "Custom Pydantic models for serializing and deserializing fixed-width data."
 version = "0.3.0"
-description = "Custom Pydantic models for parsing and serializing fixed-width format of data."
+authors = [{ name = "Yuchan Lee", email = "lasuillard@gmail.com" }]
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10, <4.0"
@@ -9,12 +10,12 @@ dependencies = ["pydantic>=2,<3"]
 
 [dependency-groups]
 dev = [
-	"mypy~=2.1",
-	"ruff~=0.6",
-	"coverage~=7.3",
-	"pytest-cov>=7,<8",
-	"pytest-sugar~=1.0",
-	"pytest~=9.0",
+  "mypy==2.1.0",
+  "ruff==0.15.15",
+  "coverage==7.14.1",
+  "pytest-cov==7.1.0",
+  "pytest-sugar==1.1.1",
+  "pytest==9.0.3",
 ]
 
 [project.urls]
@@ -30,12 +31,20 @@ build-backend = "hatchling.build"
 packages = ["pydantic_fixedwidth"]
 
 [tool.ruff]
-lint.select = ["ALL"]
-lint.ignore = ["ANN401", "TD003", "FIX002", "D105"]
 line-length = 120
 
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "ANN401",
+  "COM812", # Formatting conflict
+  "D105",
+  "FIX002",
+  "TD003",
+]
+
 [tool.ruff.lint.extend-per-file-ignores]
-"__init__.py" = ["D104"]
+"**/__init__.py" = ["D104"]
 "tests/*" = ["D", "S101", "PLR2004", "SLF001"]
 
 [tool.ruff.lint.pydocstyle]
@@ -58,14 +67,14 @@ explicit_package_bases = true
 
 [tool.pytest.ini_options]
 addopts = [
-	"--strict-markers",
-	"--doctest-modules",
-	"--cov",
-	"--cov-report=term",
-	"--cov-report=xml",
-	"--show-capture=no",
-	"--junitxml=junit.xml",
-	"-rs",
+  "--strict-markers",
+  "--doctest-modules",
+  "--cov",
+  "--cov-report=term",
+  "--cov-report=xml",
+  "--show-capture=no",
+  "--junitxml=junit.xml",
+  "-rs",
 ]
 testpaths = ["tests"]
 
