@@ -17,10 +17,6 @@ alias up := update
 # Development
 # =============================================================================
 
-# Build this project
-build:
-    uv build
-
 # Run all checks
 ci: lint test
 
@@ -30,11 +26,6 @@ format:
 
 alias fmt := format
 
-# Apply autofixes
-fix:
-    uv run ruff check --fix .
-    uv run ruff format .
-
 # Run all linters
 lint:
     uv run ruff check .
@@ -43,6 +34,15 @@ lint:
 # Run all tests
 test:
     uv run pytest
+
+# Apply autofixes
+fix:
+    uv run ruff check --fix .
+    uv run ruff format .
+
+# Build this project
+build:
+    uv build
 
 # =============================================================================
 # Utility
