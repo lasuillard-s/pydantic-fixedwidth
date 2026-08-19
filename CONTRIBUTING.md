@@ -38,7 +38,6 @@ This repository uses [Nix Flakes](https://nix.dev/concepts/flakes.html) to manag
 - `pre-commit`
 - `just`
 - `uv`
-- `pipx`
 
 Run `nix develop` to start the development environment, then run `just install` to install dependencies.
 

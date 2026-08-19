@@ -14,13 +14,6 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
-
-        # BUG: https://github.com/nixos/nixpkgs/issues/522307
-        fixedPipx = pkgs.python3Packages.toPythonApplication (
-          pkgs.python3Packages.pipx.overridePythonAttrs (oldAttrs: {
-            doCheck = false;
-          })
-        );
       in
       {
         devShells.default = pkgs.mkShell {
@@ -28,10 +21,12 @@
             pre-commit
             just
             uv
-            fixedPipx
           ];
           shellHook = ''
             pre-commit install
+
+            # Workaround for pre-commit dependency leak
+            unset PYTHONPATH
           '';
         };
       }
