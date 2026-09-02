@@ -29,7 +29,7 @@ jobs:
           enable-cache: true
 
       - name: Install deps
-        run: uv sync --frozen
+        run: uv sync
 
       - name: Build package
         run: uv build
@@ -39,7 +39,9 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name }}
           generate_release_notes: false
-          files: dist/*
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
 
       - name: Show files
         run: ls -l --all --recursive dist
