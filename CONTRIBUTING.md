@@ -14,7 +14,7 @@ This project provides a small Python library (`pydantic_fixedwidth`) for parsing
 
 This project uses the following tech stack:
 
-- [Python](https://www.python.org) 3.10+
+- [Python](https://www.python.org) 3.11+
 - [uv](https://docs.astral.sh/uv/) for dependency management, Python installation, and packaging
 - [Ruff](https://docs.astral.sh/ruff/) to lint and format Python code, and [Mypy](https://mypy-lang.org) for type checking
 - [pytest](https://docs.pytest.org/en/latest) with coverage reporting for testing

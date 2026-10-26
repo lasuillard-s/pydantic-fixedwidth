@@ -5,7 +5,7 @@ version = "0.3.2"
 authors = [{ name = "Yuchan Lee", email = "lasuillard@gmail.com" }]
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.10, <4.0"
+requires-python = ">=3.11, <4.0"
 dependencies = ["pydantic>=2,<3"]
 
 [dependency-groups]
