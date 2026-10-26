@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pydantic
 import pytest
@@ -6,7 +6,7 @@ import pytest
 from pydantic_fixedwidth import Fixedwidth, Options, Padding
 from pydantic_fixedwidth import OrderedField as Field
 
-tzinfo = timezone.utc
+tzinfo = UTC
 
 
 class SomeRequest(Fixedwidth):
