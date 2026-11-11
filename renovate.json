@@ -5,11 +5,16 @@
   ],
   "packageRules": [
     {
+      "description": "Widen Python library runtime requirements without changing development or interpreter constraints",
       "matchManagers": [
         "pep621"
       ],
-      "matchJsonata": [
-        "$not($exists(managerData.depGroup)) or managerData.depGroup != 'dev'"
+      "matchDatasources": [
+        "pypi"
+      ],
+      "matchDepTypes": [
+        "project.dependencies",
+        "project.optional-dependencies"
       ],
       "rangeStrategy": "widen"
     }
