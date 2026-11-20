@@ -192,7 +192,18 @@ class Fixedwidth(BaseModel):
     @staticmethod
     def _format_field(field_name: str, value: Any, spec: Options | _NestedField) -> bytes:
         if isinstance(spec, _NestedField):
+            if not isinstance(value, spec.model):
+                msg = f"Value of {field_name!r} must be an instance of {spec.model.__name__!r}, got {type(value)!r}"
+                raise TypeError(msg)
+
             formatted: bytes = value.format_bytes()
+            if len(formatted) != spec.length:
+                msg = (
+                    f"Value of {field_name!r} ({formatted!r}; length: {len(formatted)}) "
+                    f"does not match field length {spec.length}"
+                )
+                raise ValueError(msg)
+
             return formatted
 
         s = spec.to_str(value)

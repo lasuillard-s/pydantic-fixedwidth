@@ -215,6 +215,36 @@ class TestNestedFixedwidth:
             class InvalidParent(Fixedwidth):
                 header: Header = Field(length=6)
 
+    def test_nested_format_bytes_length_and_type_mismatch(self) -> None:
+        class Packet(Fixedwidth):
+            header: Header
+            tail: str = Field(length=2)
+
+        class LongerHeader(Header):
+            flags: str = Field(length=2)
+
+        longer_packet = Packet(header=LongerHeader(version=1, kind="REQ", flags="FF"), tail="OK")
+        with pytest.raises(
+            ValueError,
+            match=r"Value of 'header' \(b'01REQ FF'; length: 8\) does not match field length 6",
+        ):
+            longer_packet.format_bytes()
+
+        class ShorterHeader(Header):
+            kind: str = Field(length=4, exclude=True)
+
+        shorter_packet = Packet(header=ShorterHeader(version=1, kind="REQ"), tail="OK")
+        with pytest.raises(
+            ValueError,
+            match=r"Value of 'header' \(b'01'; length: 2\) does not match field length 6",
+        ):
+            shorter_packet.format_bytes()
+
+        mutated_packet = Packet(header=Header(version=1, kind="REQ"), tail="OK")
+        mutated_packet.header = "not-a-header"  # type: ignore[assignment]
+        with pytest.raises(TypeError, match="Value of 'header' must be an instance of 'Header', got <class 'str'>"):
+            mutated_packet.format_bytes()
+
     def test_nested_forward_reference_and_model_rebuild(self) -> None:
         class ForwardOuter(Fixedwidth):
             prefix: str = Field(length=2)
