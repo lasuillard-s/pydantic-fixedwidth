@@ -140,7 +140,7 @@ class Fixedwidth(BaseModel):
         field_name: str,
         field_info: FieldInfo,
         visited: frozenset[type[Fixedwidth]],
-        checked: set[type[Fixedwidth]] | None = None,
+        checked: set[type[Fixedwidth]],
         *,
         strict: bool,
     ) -> Options | _NestedField | None:
@@ -150,8 +150,7 @@ class Fixedwidth(BaseModel):
                 msg = f"Nested Fixedwidth field {field_name!r} must not use `OrderedField`"
                 raise TypeError(msg)
 
-            active_checked = set() if checked is None else checked
-            cls._assert_no_cycle(annotation, visited, active_checked)
+            cls._assert_no_cycle(annotation, visited, checked)
             if not annotation.__pydantic_complete__:
                 if strict:
                     msg = f"Nested Fixedwidth model {annotation.__name__!r} is not fully defined"
@@ -160,7 +159,7 @@ class Fixedwidth(BaseModel):
 
             if (
                 annotation._fields_initialized_for is not annotation  # noqa: SLF001
-                and not annotation._init_fixedwidth_fields(visited, checked=active_checked, strict=strict)  # noqa: SLF001
+                and not annotation._init_fixedwidth_fields(visited, checked=checked, strict=strict)  # noqa: SLF001
             ):
                 return None
 

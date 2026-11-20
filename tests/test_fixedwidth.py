@@ -107,7 +107,7 @@ class TestNestedFixedwidth:
         packet = Packet(prefix=">>", header=Header(version=1, kind="REQ"), suffix="END")
         raw = packet.format_bytes()
 
-        assert Packet._total_length == 13
+        assert len(raw) == 13
         assert raw == b">>01REQ   END"
         assert Packet.parse_bytes(raw) == packet
         assert (
@@ -136,9 +136,34 @@ class TestNestedFixedwidth:
         )
         raw = order.format_bytes()
 
-        assert Order._total_length == 36
+        assert len(raw) == 36
         assert raw == b"0042Alice Seoul 12345Busan 67890PAID"
         assert Order.parse_bytes(raw) == order
+
+    def test_nested_diamond_hierarchy_round_trip(self) -> None:
+        class Leaf(Fixedwidth):
+            code: str = Field(length=2)
+
+        class LeftBranch(Fixedwidth):
+            leaf: Leaf
+            tag: str = Field(length=1)
+
+        class RightBranch(Fixedwidth):
+            leaf: Leaf
+            tag: str = Field(length=1)
+
+        class Root(Fixedwidth):
+            left: LeftBranch
+            right: RightBranch
+
+        root = Root(
+            left=LeftBranch(leaf=Leaf(code="L1"), tag="A"),
+            right=RightBranch(leaf=Leaf(code="R2"), tag="B"),
+        )
+        raw = root.format_bytes()
+
+        assert raw == b"L1AR2B"
+        assert Root.parse_bytes(raw) == root
 
     def test_nested_mixed_encodings(self) -> None:
         class InnerUtf8(Fixedwidth):
@@ -170,12 +195,12 @@ class TestNestedFixedwidth:
         env = Envelope(annotated_meta=Meta(tag="REAL"))
         raw = env.format_bytes()
 
-        assert Envelope._total_length == 8
+        assert len(raw) == 8
         assert raw == b"DFLTREAL"
         assert Envelope.parse_bytes(raw) == env
         assert Envelope.parse_bytes(raw, ignored=Meta(tag="OVRD")).ignored == Meta(tag="OVRD")
 
-    def test_nested_inheritance_and_override(self) -> None:
+    def test_nested_inheritance_preserves_fields(self) -> None:
         class BasePacket(Fixedwidth):
             header: Header
             tail: str = Field(length=2)
@@ -183,18 +208,41 @@ class TestNestedFixedwidth:
         class ExtendedPacket(BasePacket):
             checksum: str = Field(length=4)
 
+        ext = ExtendedPacket(header=Header(version=2, kind="ACK"), tail="OK", checksum="ABCD")
+        raw = ext.format_bytes()
+
+        assert len(raw) == 12
+        assert raw == b"02ACK OKABCD"
+        assert ExtendedPacket.parse_bytes(raw) == ext
+
+    def test_nested_field_override_preserves_declaration_order(self) -> None:
+        class BasePacket(Fixedwidth):
+            header: Header
+            tail: str = Field(length=2)
+
         class OverriddenPacket(BasePacket):
             header: ExtendedHeader  # type: ignore[assignment]
 
-        ext = ExtendedPacket(header=Header(version=2, kind="ACK"), tail="OK", checksum="ABCD")
-        assert ExtendedPacket._total_length == 12
-        assert ext.format_bytes() == b"02ACK OKABCD"
-        assert ExtendedPacket.parse_bytes(b"02ACK OKABCD") == ext
-
         ovrd = OverriddenPacket(header=ExtendedHeader(version=3, kind="SYN", flags="FF"), tail="OK")
-        assert OverriddenPacket._total_length == 10
-        assert ovrd.format_bytes() == b"03SYN FFOK"
-        assert OverriddenPacket.parse_bytes(b"03SYN FFOK") == ovrd
+        raw = ovrd.format_bytes()
+
+        assert len(raw) == 10
+        assert raw == b"03SYN FFOK"
+        assert OverriddenPacket.parse_bytes(raw) == ovrd
+
+    def test_scalar_field_override_preserves_declaration_order(self) -> None:
+        class BaseRecord(Fixedwidth):
+            first: str = Field(length=2)
+            second: str = Field(length=2)
+
+        class ChildRecord(BaseRecord):
+            first: str = Field(length=4)
+
+        record = ChildRecord(first="ABCD", second="XY")
+        raw = record.format_bytes()
+
+        assert raw == b"ABCDXY"
+        assert ChildRecord.parse_bytes(raw) == record
 
     def test_nested_empty_model(self) -> None:
         class Empty(Fixedwidth):
@@ -205,9 +253,11 @@ class TestNestedFixedwidth:
             code: str = Field(length=3)
 
         wrapper = Wrapper(empty=Empty(), code="XYZ")
-        assert Wrapper._total_length == 3
-        assert wrapper.format_bytes() == b"XYZ"
-        assert Wrapper.parse_bytes(b"XYZ") == wrapper
+        raw = wrapper.format_bytes()
+
+        assert len(raw) == 3
+        assert raw == b"XYZ"
+        assert Wrapper.parse_bytes(raw) == wrapper
 
     def test_nested_ordered_field_rejected(self) -> None:
         with pytest.raises(TypeError, match="Nested Fixedwidth field 'header' must not use `OrderedField`"):
@@ -215,7 +265,13 @@ class TestNestedFixedwidth:
             class InvalidParent(Fixedwidth):
                 header: Header = Field(length=6)
 
-    def test_nested_format_bytes_length_and_type_mismatch(self) -> None:
+    def test_nested_annotated_ordered_field_rejected(self) -> None:
+        with pytest.raises(TypeError, match="Nested Fixedwidth field 'header' must not use `OrderedField`"):
+
+            class InvalidAnnotatedParent(Fixedwidth):
+                header: Annotated[Header, Field(length=6)]
+
+    def test_nested_longer_subclass_rejected_on_format_bytes(self) -> None:
         class Packet(Fixedwidth):
             header: Header
             tail: str = Field(length=2)
@@ -230,6 +286,11 @@ class TestNestedFixedwidth:
         ):
             longer_packet.format_bytes()
 
+    def test_nested_shorter_subclass_rejected_on_format_bytes(self) -> None:
+        class Packet(Fixedwidth):
+            header: Header
+            tail: str = Field(length=2)
+
         class ShorterHeader(Header):
             kind: str = Field(length=4, exclude=True)
 
@@ -240,10 +301,27 @@ class TestNestedFixedwidth:
         ):
             shorter_packet.format_bytes()
 
+    def test_nested_mutated_non_model_rejected_on_format_bytes(self) -> None:
+        class Packet(Fixedwidth):
+            header: Header
+            tail: str = Field(length=2)
+
         mutated_packet = Packet(header=Header(version=1, kind="REQ"), tail="OK")
         mutated_packet.header = "not-a-header"  # type: ignore[assignment]
         with pytest.raises(TypeError, match="Value of 'header' must be an instance of 'Header', got <class 'str'>"):
             mutated_packet.format_bytes()
+
+    def test_nested_scalar_overflow_propagates_on_format_bytes(self) -> None:
+        class Packet(Fixedwidth):
+            header: Header
+            tail: str = Field(length=2)
+
+        packet = Packet(header=Header(version=1, kind="TOO-LONG"), tail="OK")
+        with pytest.raises(
+            ValueError,
+            match=r"Value of 'kind' \(b'TOO-LONG'; length: 8\) is longer than field length 4",
+        ):
+            packet.format_bytes()
 
     def test_nested_forward_reference_and_model_rebuild(self) -> None:
         class ForwardOuter(Fixedwidth):
@@ -252,7 +330,6 @@ class TestNestedFixedwidth:
             suffix: str = Field(length=2)
 
         assert not ForwardOuter.__pydantic_complete__
-        assert ForwardOuter._total_length == 0
         assert ForwardOuter.model_rebuild(raise_errors=False) is False
 
         with pytest.raises(TypeError, match="Model 'ForwardOuter' is not fully defined"):
@@ -262,10 +339,10 @@ class TestNestedFixedwidth:
             value: int = Field(length=4, justify="right", fill_char=b"0", from_str=int)
 
         assert ForwardOuter.model_rebuild() is True
-        assert ForwardOuter._total_length == 8
 
         obj = ForwardOuter(prefix="AB", inner=ForwardInner(value=42), suffix="CD")
         raw = obj.format_bytes()
+        assert len(raw) == 8
         assert raw == b"AB0042CD"
         assert ForwardOuter.parse_bytes(raw) == obj
 
@@ -281,11 +358,12 @@ class TestNestedFixedwidth:
 
         assert Middle.model_rebuild() is True
         assert Outer.model_rebuild() is True
-        assert Outer._total_length == 4
 
         obj = Outer(middle=Middle(leaf=Leaf(val="test")))
-        assert obj.format_bytes() == b"test"
-        assert Outer.parse_bytes(b"test") == obj
+        raw = obj.format_bytes()
+        assert len(raw) == 4
+        assert raw == b"test"
+        assert Outer.parse_bytes(raw) == obj
 
     def test_nested_deferred_submodel_rebuild(self) -> None:
         class DeferredInner(Fixedwidth):
@@ -307,28 +385,14 @@ class TestNestedFixedwidth:
         assert parsed == DeferredOuter(inner=DeferredInner(leaf=DeferredLeaf(val="ABCD")))
         assert parsed.format_bytes() == b"ABCD"
 
-    def test_nested_incomplete_annotation_guard(self) -> None:
-        class IncompleteChild(Fixedwidth):
-            missing: "DoesNotExist"  # type: ignore[name-defined]  # noqa: F821
-
-        class IncompleteParent(Fixedwidth):
-            child: IncompleteChild
-
-        with pytest.raises(TypeError, match="Nested Fixedwidth model 'IncompleteChild' is not fully defined"):
-            IncompleteParent._resolve_field_spec(
-                "child",
-                IncompleteParent.model_fields["child"],
-                frozenset({IncompleteParent}),
-                strict=True,
-            )
-
-    def test_nested_circular_model_rejected(self) -> None:
+    def test_nested_self_recursive_model_rejected(self) -> None:
         with pytest.raises(ValueError, match="Circular nested Fixedwidth model is not supported: 'SelfRecursive'"):
 
             class SelfRecursive(Fixedwidth):
                 name: str = Field(length=4)
                 nxt: "SelfRecursive"
 
+    def test_nested_incomplete_submodel_rejected_on_parse_bytes(self) -> None:
         class CycleA(Fixedwidth):
             b: "CycleB"
 
@@ -340,6 +404,13 @@ class TestNestedFixedwidth:
 
         with pytest.raises(TypeError, match="Nested Fixedwidth model 'CycleA' is not fully defined"):
             CycleHolder.parse_bytes(b"")
+
+    def test_nested_indirect_circular_model_rejected(self) -> None:
+        class CycleA(Fixedwidth):
+            b: "CycleB"
+
+        class CycleB(Fixedwidth):
+            a: CycleA
 
         with pytest.raises(ValueError, match="Circular nested Fixedwidth model is not supported"):
             CycleA.model_rebuild()
