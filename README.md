@@ -24,7 +24,7 @@ Usage example:
 from datetime import datetime, timezone
 
 from pydantic_fixedwidth import Fixedwidth, Padding
-from pydantic_fixedwidth import OrderedField as Field
+from pydantic_fixedwidth import FixedwidthField as Field
 
 tzinfo = timezone.utc
 

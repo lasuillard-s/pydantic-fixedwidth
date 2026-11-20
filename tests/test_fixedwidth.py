@@ -5,7 +5,7 @@ import pydantic
 import pytest
 
 from pydantic_fixedwidth import Fixedwidth, Options, Padding
-from pydantic_fixedwidth import OrderedField as Field
+from pydantic_fixedwidth import FixedwidthField as Field
 
 tzinfo = UTC
 
@@ -70,14 +70,25 @@ class TestFixedwidth:
 
 
 class TestOptions:
-    def test_save_json_schema_extra_is_not_dict(self) -> None:
-        with pytest.raises(TypeError, match="`json_schema_extra` must be a `dict`, but got: <class 'str'>"):
-            Field(length=10, json_schema_extra="not-a-dict")
+    def test_preserves_custom_json_schema_extra(self) -> None:
+        field_with_str_extra = Field(length=10, json_schema_extra="custom-extra")
+        assert field_with_str_extra.json_schema_extra == "custom-extra"
 
-    def test_load_json_schema_extra_is_not_dict(self) -> None:
+        class SchemaModel(Fixedwidth):
+            name: str = Field(length=6, json_schema_extra={"examples": ["alice"]})
+
+        assert SchemaModel.model_json_schema()["properties"]["name"]["examples"] == ["alice"]
+
+    def test_load_missing_options_raises_type_error(self) -> None:
         field = pydantic.Field()
-        with pytest.raises(TypeError, match="`json_schema_extra` must be a `dict`, but got: <class 'NoneType'>"):
+        with pytest.raises(TypeError, match="Fixedwidth field options not found on field metadata"):
             Options.load(field)
+
+    def test_load_multiple_options_raises_value_error(self) -> None:
+        with pytest.raises(ValueError, match="Multiple Fixedwidth field options found on a single field"):
+
+            class _DuplicateOptions(Fixedwidth):
+                name: Annotated[str, Field(length=4), Field(length=6)]
 
 
 class Header(Fixedwidth):
@@ -288,13 +299,13 @@ class TestNestedFixedwidth:
         assert Wrapper.parse_bytes(raw) == wrapper
 
     def test_nested_ordered_field_rejected(self) -> None:
-        with pytest.raises(TypeError, match="Nested Fixedwidth field 'header' must not use `OrderedField`"):
+        with pytest.raises(TypeError, match="Nested Fixedwidth field 'header' must not use `FixedwidthField`"):
 
             class _InvalidParent(Fixedwidth):
                 header: Header = Field(length=6)
 
     def test_nested_annotated_ordered_field_rejected(self) -> None:
-        with pytest.raises(TypeError, match="Nested Fixedwidth field 'header' must not use `OrderedField`"):
+        with pytest.raises(TypeError, match="Nested Fixedwidth field 'header' must not use `FixedwidthField`"):
 
             class _InvalidAnnotatedParent(Fixedwidth):
                 header: Annotated[Header, Field(length=6)]
@@ -362,6 +373,10 @@ class TestNestedFixedwidth:
 
         with pytest.raises(TypeError, match="Model 'ForwardOuter' is not fully defined"):
             ForwardOuter.parse_bytes(b"AB0042CD")
+
+        constructed = ForwardOuter.model_construct(prefix="AB", inner=None, suffix="CD")
+        with pytest.raises(TypeError, match="Model 'ForwardOuter' is not fully defined"):
+            constructed.format_bytes()
 
         class ForwardInner(Fixedwidth):
             value: int = Field(length=4, justify="right", fill_char=b"0", from_str=int)

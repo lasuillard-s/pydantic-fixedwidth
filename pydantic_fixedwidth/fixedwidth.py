@@ -2,22 +2,18 @@
 from __future__ import annotations
 
 import logging
-from collections import OrderedDict
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, ClassVar, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 from pydantic.fields import FieldInfo  # noqa: TC002
 
 logger = logging.getLogger(__name__)
 
 
-__counter = 0
-
-
-def OrderedField(  # noqa: N802, PLR0913
+def FixedwidthField(  # noqa: N802, PLR0913
     *args: Any,
     length: int,
     justify: Literal["left", "right"] = "left",
@@ -43,29 +39,30 @@ def OrderedField(  # noqa: N802, PLR0913
     Returns:
         A `pydantic.Field` instance with fixed-width related settings.
     """
-    global __counter  # noqa: PLW0603
-
-    kwargs.setdefault("json_schema_extra", {})
     field: FieldInfo = Field(*args, **kwargs)
 
     options = Options(
-        field_info=field,
         length=length,
-        order=__counter,
         justify=justify,
         fill_char=fill_char,
         encoding=encoding,
         from_str=from_str,
         to_str=to_str,
     )
-    options.save()
-    __counter += 1
+    field.metadata.append(_OptionsMarker(options))
 
     return field
 
 
 # Shortcuts for convenience
-Padding = partial(OrderedField, default="")
+Padding = partial(FixedwidthField, default="")
+
+
+@dataclass(frozen=True, slots=True)
+class _OptionsMarker:
+    """Internal wrapper storing `Options` inside `FieldInfo.metadata` without Pydantic schema hooks."""
+
+    options: Options
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,7 +76,7 @@ class _NestedField:
 class Fixedwidth(BaseModel):
     """A base class for fixed-width models."""
 
-    _field_options: ClassVar[OrderedDict[str, Options | _NestedField]] = OrderedDict()
+    _field_options: ClassVar[dict[str, Options | _NestedField]] = {}
     _total_length: ClassVar[int] = 0
     _fields_initialized_for: ClassVar[type[Fixedwidth] | None] = None
 
@@ -101,11 +98,11 @@ class Fixedwidth(BaseModel):
     @classmethod
     def _set_fixedwidth_fields(
         cls,
-        fields: OrderedDict[str, Options | _NestedField] | None = None,
+        fields: dict[str, Options | _NestedField] | None = None,
         total_length: int = 0,
     ) -> None:
         if fields is None:
-            cls._field_options = OrderedDict()
+            cls._field_options = {}
             cls._total_length = 0
             cls._fields_initialized_for = None
             return
@@ -146,8 +143,8 @@ class Fixedwidth(BaseModel):
     ) -> Options | _NestedField | None:
         annotation = field_info.annotation
         if isinstance(annotation, type) and issubclass(annotation, Fixedwidth):
-            if isinstance(field_info.json_schema_extra, dict) and _OPTIONS_KEY in field_info.json_schema_extra:
-                msg = f"Nested Fixedwidth field {field_name!r} must not use `OrderedField`"
+            if any(isinstance(item, _OptionsMarker) for item in field_info.metadata):
+                msg = f"Nested Fixedwidth field {field_name!r} must not use `FixedwidthField`"
                 raise TypeError(msg)
 
             cls._assert_no_cycle(annotation, visited, checked)
@@ -185,7 +182,7 @@ class Fixedwidth(BaseModel):
 
         visited = _visited | {cls}
         active_checked = set() if checked is None else checked
-        fields: OrderedDict[str, Options | _NestedField] = OrderedDict()
+        fields: dict[str, Options | _NestedField] = {}
         total_length = 0
         deferred = False
         for key, value in cls.model_fields.items():
@@ -291,19 +288,10 @@ class Fixedwidth(BaseModel):
         return obj
 
 
-_OPTIONS_KEY = "__pydantic_fixedwidth__"
-"""Key to store `Options` in `field_info.json_schema_extra`."""
-
-
 class Options(BaseModel):
     """Options for a fixed-width field."""
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    field_info: FieldInfo
-
     length: int
-    order: int
     justify: Literal["left", "right"]
     fill_char: bytes = Field(..., min_length=1, max_length=1)
     encoding: str
@@ -314,21 +302,16 @@ class Options(BaseModel):
     to_str: Callable[[Any], str]
     """Callable to cast the field type to a string."""
 
-    @staticmethod
-    def _require_extra_dict(field_info: FieldInfo) -> dict[str, Any]:
-        if not isinstance(field_info.json_schema_extra, dict):
-            msg = f"`json_schema_extra` must be a `dict`, but got: {type(field_info.json_schema_extra)!r}"
-            raise TypeError(msg)
-
-        return field_info.json_schema_extra
-
-    def save(self) -> None:
-        """Save `Options` to `field_info`."""
-        extra = self._require_extra_dict(self.field_info)
-        extra[_OPTIONS_KEY] = self.model_dump()
-
     @classmethod
     def load(cls, field_info: FieldInfo) -> Options:
         """Load `Options` from `field_info`."""
-        extra = cls._require_extra_dict(field_info)
-        return cls.model_validate(extra.get(_OPTIONS_KEY, {}))
+        matches = [item.options for item in field_info.metadata if isinstance(item, _OptionsMarker)]
+        if not matches:
+            msg = "Fixedwidth field options not found on field metadata"
+            raise TypeError(msg)
+
+        if len(matches) > 1:
+            msg = "Multiple Fixedwidth field options found on a single field"
+            raise ValueError(msg)
+
+        return matches[0]
