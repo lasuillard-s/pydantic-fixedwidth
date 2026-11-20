@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from collections import OrderedDict
-from collections.abc import Callable  # noqa: TC003
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, ClassVar, Literal, Self
@@ -249,20 +249,40 @@ class Fixedwidth(BaseModel):
 
         return result
 
+    @staticmethod
+    def _parse_field(
+        raw_slice: bytes,
+        field_name: str,
+        spec: Options | _NestedField,
+        extras: dict[str, Any],
+    ) -> Any:
+        if isinstance(spec, Options):
+            return spec.from_str(bytes.decode(raw_slice, spec.encoding))
+
+        if field_name not in extras:
+            return spec.model.parse_bytes(raw_slice)
+
+        nested_extras = extras.pop(field_name)
+        if not isinstance(nested_extras, Mapping):
+            msg = f"Extras for nested field {field_name!r} must be a mapping, got {type(nested_extras)!r}"
+            raise TypeError(msg)
+
+        return spec.model.parse_bytes(raw_slice, **nested_extras)
+
     @classmethod
     def parse_bytes(cls, raw: bytes, **extras: Any) -> Self:
-        """Parse a fixed-width byte string into a model."""
+        """Parse a fixed-width byte string into a model.
+
+        For nested `Fixedwidth` fields, passing a mapping under the nested field's name in
+        `extras` forwards those keyword arguments to that nested model's `parse_bytes`.
+        """
         cls._ensure_initialized()
 
         values: dict[str, Any] = {}
         index = 0
         for field_name, spec in cls._field_options.items():
             b = raw[index : index + spec.length]
-            values[field_name] = (
-                spec.model.parse_bytes(b)
-                if isinstance(spec, _NestedField)
-                else spec.from_str(bytes.decode(b, spec.encoding))
-            )
+            values[field_name] = cls._parse_field(b, field_name, spec, extras)
             index += spec.length
 
         obj = cls(**values, **extras)

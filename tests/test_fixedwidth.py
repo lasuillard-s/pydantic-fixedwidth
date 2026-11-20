@@ -200,6 +200,34 @@ class TestNestedFixedwidth:
         assert Envelope.parse_bytes(raw) == env
         assert Envelope.parse_bytes(raw, ignored=Meta(tag="OVRD")).ignored == Meta(tag="OVRD")
 
+    def test_nested_required_excluded_field_receives_forwarded_extras(self) -> None:
+        class ContextMeta(Fixedwidth):
+            tag: str = Field(length=4)
+            context: str = pydantic.Field(exclude=True)
+
+        class ContextEnvelope(Fixedwidth):
+            meta: ContextMeta
+            tail: str = Field(length=2)
+
+        class OuterEnvelope(Fixedwidth):
+            envelope: ContextEnvelope
+
+        raw = b"REALOK"
+        parsed = OuterEnvelope.parse_bytes(raw, envelope={"meta": {"context": "req-1"}})
+
+        assert parsed == OuterEnvelope(
+            envelope=ContextEnvelope(meta=ContextMeta(tag="REAL", context="req-1"), tail="OK")
+        )
+
+        with pytest.raises(pydantic.ValidationError):
+            OuterEnvelope.parse_bytes(raw)
+
+        with pytest.raises(
+            TypeError,
+            match="Extras for nested field 'envelope' must be a mapping, got <class 'str'>",
+        ):
+            OuterEnvelope.parse_bytes(raw, envelope="not-a-mapping")
+
     def test_nested_inheritance_preserves_fields(self) -> None:
         class BasePacket(Fixedwidth):
             header: Header
