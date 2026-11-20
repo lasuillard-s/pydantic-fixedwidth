@@ -99,15 +99,40 @@ class Fixedwidth(BaseModel):
         return rebuilt
 
     @classmethod
-    def _assert_no_cycle(cls, model: type[Fixedwidth], visited: frozenset[type[Fixedwidth]]) -> None:
+    def _set_fixedwidth_fields(
+        cls,
+        fields: OrderedDict[str, Options | _NestedField] | None = None,
+        total_length: int = 0,
+    ) -> None:
+        if fields is None:
+            cls._field_options = OrderedDict()
+            cls._total_length = 0
+            cls._fields_initialized_for = None
+            return
+
+        cls._field_options = fields
+        cls._total_length = total_length
+        cls._fields_initialized_for = cls
+
+    @classmethod
+    def _assert_no_cycle(
+        cls,
+        model: type[Fixedwidth],
+        visited: frozenset[type[Fixedwidth]],
+        checked: set[type[Fixedwidth]],
+    ) -> None:
         if model in visited:
             msg = f"Circular nested Fixedwidth model is not supported: {cls.__name__!r}"
             raise ValueError(msg)
+        if model in checked:
+            return
 
         next_visited = visited | {model}
         for spec in model._field_options.values():  # noqa: SLF001
             if isinstance(spec, _NestedField):
-                cls._assert_no_cycle(spec.model, next_visited)
+                cls._assert_no_cycle(spec.model, next_visited, checked)
+
+        checked.add(model)
 
     @classmethod
     def _resolve_field_spec(
@@ -115,6 +140,7 @@ class Fixedwidth(BaseModel):
         field_name: str,
         field_info: FieldInfo,
         visited: frozenset[type[Fixedwidth]],
+        checked: set[type[Fixedwidth]] | None = None,
         *,
         strict: bool,
     ) -> Options | _NestedField | None:
@@ -124,17 +150,18 @@ class Fixedwidth(BaseModel):
                 msg = f"Nested Fixedwidth field {field_name!r} must not use `OrderedField`"
                 raise TypeError(msg)
 
-            cls._assert_no_cycle(annotation, visited)
+            active_checked = set() if checked is None else checked
+            cls._assert_no_cycle(annotation, visited, active_checked)
             if not annotation.__pydantic_complete__:
                 if strict:
                     msg = f"Nested Fixedwidth model {annotation.__name__!r} is not fully defined"
                     raise TypeError(msg)
                 return None
 
-            if annotation._fields_initialized_for is not annotation:  # noqa: SLF001
-                annotation._init_fixedwidth_fields(visited, strict=strict)  # noqa: SLF001
-
-            if annotation._fields_initialized_for is not annotation:  # noqa: SLF001
+            if (
+                annotation._fields_initialized_for is not annotation  # noqa: SLF001
+                and not annotation._init_fixedwidth_fields(visited, checked=active_checked, strict=strict)  # noqa: SLF001
+            ):
                 return None
 
             return _NestedField(model=annotation, length=annotation._total_length)  # noqa: SLF001
@@ -146,19 +173,19 @@ class Fixedwidth(BaseModel):
         cls,
         _visited: frozenset[type[Fixedwidth]] = frozenset(),
         *,
+        checked: set[type[Fixedwidth]] | None = None,
         strict: bool = True,
-    ) -> None:
+    ) -> bool:
         if not cls.__pydantic_complete__:
-            cls._field_options = OrderedDict()
-            cls._total_length = 0
-            cls._fields_initialized_for = None
+            cls._set_fixedwidth_fields()
             if strict:
                 msg = f"Model {cls.__name__!r} is not fully defined; call `{cls.__name__}.model_rebuild()` first."
                 raise TypeError(msg)
 
-            return
+            return False
 
         visited = _visited | {cls}
+        active_checked = set() if checked is None else checked
         fields: OrderedDict[str, Options | _NestedField] = OrderedDict()
         total_length = 0
         deferred = False
@@ -166,7 +193,7 @@ class Fixedwidth(BaseModel):
             if value.exclude:
                 continue
 
-            spec = cls._resolve_field_spec(key, value, visited, strict=strict)
+            spec = cls._resolve_field_spec(key, value, visited, active_checked, strict=strict)
             if spec is None:
                 deferred = True
                 continue
@@ -175,14 +202,11 @@ class Fixedwidth(BaseModel):
             total_length += spec.length
 
         if deferred:
-            cls._field_options = OrderedDict()
-            cls._total_length = 0
-            cls._fields_initialized_for = None
-            return
+            cls._set_fixedwidth_fields()
+            return False
 
-        cls._field_options = fields
-        cls._total_length = total_length
-        cls._fields_initialized_for = cls
+        cls._set_fixedwidth_fields(fields, total_length)
+        return True
 
     @classmethod
     def _ensure_initialized(cls) -> None:
@@ -271,19 +295,21 @@ class Options(BaseModel):
     to_str: Callable[[Any], str]
     """Callable to cast the field type to a string."""
 
-    def save(self) -> None:
-        """Save `Options` to `field_info`."""
-        if not isinstance(self.field_info.json_schema_extra, dict):
-            msg = f"`json_schema_extra` must be a `dict`, but got: {type(self.field_info.json_schema_extra)!r}"
-            raise TypeError(msg)
-
-        self.field_info.json_schema_extra[_OPTIONS_KEY] = self.model_dump()
-
-    @classmethod
-    def load(cls, field_info: FieldInfo) -> Options:
-        """Load `Options` from `field_info`."""
+    @staticmethod
+    def _require_extra_dict(field_info: FieldInfo) -> dict[str, Any]:
         if not isinstance(field_info.json_schema_extra, dict):
             msg = f"`json_schema_extra` must be a `dict`, but got: {type(field_info.json_schema_extra)!r}"
             raise TypeError(msg)
 
-        return cls.model_validate(field_info.json_schema_extra.get(_OPTIONS_KEY, {}))
+        return field_info.json_schema_extra
+
+    def save(self) -> None:
+        """Save `Options` to `field_info`."""
+        extra = self._require_extra_dict(self.field_info)
+        extra[_OPTIONS_KEY] = self.model_dump()
+
+    @classmethod
+    def load(cls, field_info: FieldInfo) -> Options:
+        """Load `Options` from `field_info`."""
+        extra = cls._require_extra_dict(field_info)
+        return cls.model_validate(extra.get(_OPTIONS_KEY, {}))
