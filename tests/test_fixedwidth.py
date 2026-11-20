@@ -262,13 +262,13 @@ class TestNestedFixedwidth:
     def test_nested_ordered_field_rejected(self) -> None:
         with pytest.raises(TypeError, match="Nested Fixedwidth field 'header' must not use `OrderedField`"):
 
-            class InvalidParent(Fixedwidth):
+            class _InvalidParent(Fixedwidth):
                 header: Header = Field(length=6)
 
     def test_nested_annotated_ordered_field_rejected(self) -> None:
         with pytest.raises(TypeError, match="Nested Fixedwidth field 'header' must not use `OrderedField`"):
 
-            class InvalidAnnotatedParent(Fixedwidth):
+            class _InvalidAnnotatedParent(Fixedwidth):
                 header: Annotated[Header, Field(length=6)]
 
     def test_nested_longer_subclass_rejected_on_format_bytes(self) -> None:
@@ -386,11 +386,11 @@ class TestNestedFixedwidth:
         assert parsed.format_bytes() == b"ABCD"
 
     def test_nested_self_recursive_model_rejected(self) -> None:
-        with pytest.raises(ValueError, match="Circular nested Fixedwidth model is not supported: 'SelfRecursive'"):
+        with pytest.raises(ValueError, match="Circular nested Fixedwidth model is not supported: '_SelfRecursive'"):
 
-            class SelfRecursive(Fixedwidth):
+            class _SelfRecursive(Fixedwidth):
                 name: str = Field(length=4)
-                nxt: "SelfRecursive"
+                nxt: "_SelfRecursive"
 
     def test_nested_incomplete_submodel_rejected_on_parse_bytes(self) -> None:
         class CycleA(Fixedwidth):
@@ -407,9 +407,9 @@ class TestNestedFixedwidth:
 
     def test_nested_indirect_circular_model_rejected(self) -> None:
         class CycleA(Fixedwidth):
-            b: "CycleB"
+            b: "_CycleB"
 
-        class CycleB(Fixedwidth):
+        class _CycleB(Fixedwidth):
             a: CycleA
 
         with pytest.raises(ValueError, match="Circular nested Fixedwidth model is not supported"):
