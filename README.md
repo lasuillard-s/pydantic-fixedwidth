@@ -24,17 +24,23 @@ Usage example:
 from datetime import datetime, timezone
 
 from pydantic_fixedwidth import Fixedwidth, Padding
-from pydantic_fixedwidth import OrderedField as Field
+from pydantic_fixedwidth import FixedwidthField as Field
 
 tzinfo = timezone.utc
 
 
+class Header(Fixedwidth):
+    version: int = Field(length=2, justify="right", fill_char=b"0")
+    kind: str = Field(length=4)
+
+
 class SomeRequest(Fixedwidth):
+    header: Header
     string: str = Field(length=8)
     hangul: str = Field(length=6)
     number: int = Field(length=10, justify="right", fill_char=b"0")
 
-    # Just an padding field
+    # Just a padding field
     p_: str = Padding(length=10)
 
     # This field will be ignored in ser/de
@@ -49,6 +55,7 @@ class SomeRequest(Fixedwidth):
 
 # Format model to bytes
 some_request = SomeRequest(
+    header=Header(version=1, kind="REQ"),
     string="<DFG&",
     hangul="한글",
     number=381,
@@ -56,8 +63,8 @@ some_request = SomeRequest(
 )
 b = some_request.format_bytes()
 
-assert len(b) == 54
-assert b == b"<DFG&   \xed\x95\x9c\xea\xb8\x800000000381          20240123141120124277"
+assert len(b) == 60
+assert b == b"01REQ <DFG&   \xed\x95\x9c\xea\xb8\x800000000381          20240123141120124277"
 
 # Parse bytes into model
 parsed_request = SomeRequest.parse_bytes(b)
